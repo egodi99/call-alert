@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', 'SF Pro Display', system-ui, sans-serif;
+    background: #1a1a1a;
+    color: #f0f0f0;
+    padding: 36px 32px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 36px;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 8px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 16px;
+    color: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus {
+    border-color: rgba(255,59,48,0.7);
+    background: rgba(255,59,48,0.07);
+  }
+
+  .hint {
+    font-size: 12px;
+    color: rgba(255,255,255,0.3);
+    margin-top: 8px;
+  }
+
+  .spacer { flex: 1; }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .btn {
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: #ff3b30;
+    color: #fff;
+  }
+  .btn-primary:hover { background: #e0342a; }
+
+  .btn-secondary {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.7);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.14); }
+
+  .status {
+    font-size: 13px;
+    color: #34c759;
+    text-align: center;
+    height: 20px;
+    margin-top: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .status.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <h1>⚙️ Impostazioni</h1>
+  <p class="subtitle">Configura il tuo profilo per Call Alert</p>
+
+  <label for="username">Il tuo nome</label>
+  <input type="text" id="username" placeholder="Es. Marco, Giulia…" maxlength="30" />
+  <p class="hint">Questo nome verrà mostrato agli altri quando sei in call.</p>
+
+  <div class="spacer"></div>
+
+  <div class="status" id="status">✅ Salvato!</div>
+
+  <div class="actions">
+    <button class="btn btn-secondary" id="btn-cancel">Annulla</button>
+    <button class="btn btn-primary" id="btn-save">Salva</button>
+  </div>
+
+<script>
+  const { ipcRenderer } = require('electron');
+
+  ipcRenderer.on('load-config', (_, config) => {
+    document.getElementById('username').value = config.username || '';
+  });
+
+  document.getElementById('btn-save').addEventListener('click', () => {
+    const username = document.getElementById('username').value.trim();
+    if (!username) { alert('Inserisci il tuo nome.'); return; }
+    ipcRenderer.send('save-username', username);
+    const s = document.getElementById('status');
+    s.classList.add('show');
+    setTimeout(() => { s.classList.remove('show'); window.close(); }, 1000);
+  });
+
+  document.getElementById('btn-cancel').addEventListener('click', () => window.close());
+
+  document.getElementById('username').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btn-save').click();
+  });
+</script>
+</body>
+</html>

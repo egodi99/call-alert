@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    font-family: 'Segoe UI', 'SF Pro Display', system-ui, sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-app-region: no-drag;
+  }
+
+  .border-frame {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .border-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 6px solid #ff3b30;
+    box-shadow: inset 0 0 40px rgba(255,59,48,0.25), 0 0 40px rgba(255,59,48,0.15);
+    animation: pulse-border 1.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { border-color: #ff3b30; box-shadow: inset 0 0 40px rgba(255,59,48,0.25), 0 0 40px rgba(255,59,48,0.15); }
+    50%       { border-color: #ff6b35; box-shadow: inset 0 0 70px rgba(255,59,48,0.4),  0 0 70px rgba(255,59,48,0.3); }
+  }
+
+  /* Corner decorations */
+  .corner { position: fixed; width: 180px; height: 180px; pointer-events: none; z-index: 2; }
+  .corner svg { width: 100%; height: 100%; }
+  .corner-tl { top: 0; left: 0; }
+  .corner-tr { top: 0; right: 0; transform: scaleX(-1); }
+  .corner-bl { bottom: 0; left: 0; transform: scaleY(-1); }
+  .corner-br { bottom: 0; right: 0; transform: scale(-1); }
+
+  /* Banner */
+  .banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 80px;
+    background: linear-gradient(135deg, rgba(20,0,0,0.92) 0%, rgba(40,5,5,0.88) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 2px solid rgba(255,59,48,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    z-index: 10;
+    animation: slide-down 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  @keyframes slide-down {
+    from { transform: translateY(-100%); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
+
+  .banner-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .icon-mic {
+    width: 44px; height: 44px;
+    background: rgba(255,59,48,0.2);
+    border: 2px solid rgba(255,59,48,0.7);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    animation: mic-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes mic-pulse {
+    0%, 100% { background: rgba(255,59,48,0.2); transform: scale(1); }
+    50%       { background: rgba(255,59,48,0.4); transform: scale(1.05); }
+  }
+
+  .banner-title { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .banner-subtitle { color: rgba(255,180,170,0.8); font-size: 13px; margin-top: 2px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  .banner-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Dismiss button - per chi riceve l'alert */
+  .dismiss-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    color: rgba(255,255,255,0.7);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .dismiss-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+  /* Calls panel */
+  .calls-panel {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10;
+  }
+
+  .call-card {
+    background: rgba(15,5,5,0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,59,48,0.4);
+    border-radius: 14px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 280px;
+    animation: card-in 0.35s cubic-bezier(0.16,1,0.3,1) both;
+    box-shadow: 0 8px 32px rgba(255,59,48,0.15);
+  }
+
+  @keyframes card-in {
+    from { transform: translateX(40px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+
+  .call-avatar {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, #ff3b30, #ff6b35);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+
+  .call-info { flex: 1; }
+  .call-user { color: #fff; font-size: 15px; font-weight: 600; }
+  .call-meta { color: rgba(255,180,170,0.7); font-size: 12px; margin-top: 2px; }
+  .call-timer { color: rgba(255,120,110,0.9); font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 500; }
+
+  .end-btn {
+    background: rgba(255,59,48,0.15);
+    border: 1px solid rgba(255,59,48,0.5);
+    border-radius: 8px;
+    color: #ff6b60;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .end-btn:hover { background: rgba(255,59,48,0.3); }
+
+  
+  </style>
+</head>
+<body>
+
+<div class="border-frame"></div>
+
+<div class="corner corner-tl">
+  <svg viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 0 L80 0 L80 6 L6 6 L6 80 L0 80 Z" fill="rgba(255,59,48,0.8)"/>
+    <path d="M0 0 L50 0 L50 3 L3 3 L3 50 L0 50 Z" fill="rgba(255,59,48,0.4)"/>
+  </svg>
+</div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<div class="banner">
+  <div class="banner-left">
+    <div class="icon-mic">📵</div>
+    <div>
+      <div class="banner-title">CALL IN CORSO — Silenzio!</div>
+      <div class="banner-subtitle" id="call-count">Caricamento…</div>
+    </div>
+  </div>
+  <div class="banner-right">
+    <button class="dismiss-btn" id="dismiss-btn">Ho capito, chiudi ✕</button>
+  </div>
+</div>
+
+  <span class="mini-text" id="mini-text">Call attiva</span>
+  <button class="mini-expand" id="mini-expand">mostra</button>
+</div>
+
+<div class="calls-panel" id="calls-panel"></div>
+
+<script>
+const { ipcRenderer } = require('electron');
+
+let callTimers = {};
+let myUsername = '';
+let knownCallIds = new Set();
+
+// ── Suono notifica gentile via Web Audio API ──────────────────────────────────
+function playNotification() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Due note morbide in sequenza: una "campana" delicata
+    function playTone(freq, startAt, duration, gainPeak) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
+
+      // Fade in veloce, fade out lento → suono morbido tipo campanella
+      gain.gain.setValueAtTime(0, ctx.currentTime + startAt);
+      gain.gain.linearRampToValueAtTime(gainPeak, ctx.currentTime + startAt + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startAt + duration);
+
+      osc.start(ctx.currentTime + startAt);
+      osc.stop(ctx.currentTime + startAt + duration);
+    }
+
+    // Prima nota: Do5 (523Hz), seconda nota: Mi5 (659Hz) — intervallo di terza, suono piacevole
+    playTone(523, 0,    0.8, 0.18);
+    playTone(659, 0.22, 0.9, 0.13);
+
+    // Chiudi il contesto dopo che i suoni finiscono
+    setTimeout(() => ctx.close(), 1500);
+  } catch (e) {
+    console.log('Audio non disponibile:', e);
+  }
+}
+
+function formatDuration(startTime) {
+  const secs = Math.floor((Date.now() - startTime) / 1000);
+  const m = Math.floor(secs / 60).toString().padStart(2, '0');
+  const s = (secs % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function renderCalls(calls, isNew) {
+  if (isNew) playNotification();
+  const panel = document.getElementById('calls-panel');
+  const countEl = document.getElementById('call-count');
+  const miniText = document.getElementById('mini-text');
+
+  const count = Object.keys(calls).length;
+  const label = count === 1 ? '1 call attiva' : `${count} call attive`;
+  countEl.textContent = label;
+  miniText.textContent = label;
+
+  Object.values(callTimers).forEach(clearInterval);
+  callTimers = {};
+  panel.innerHTML = '';
+
+  Object.entries(calls).forEach(([callId, info]) => {
+    const card = document.createElement('div');
+    card.className = 'call-card';
+    card.dataset.callId = callId;
+
+    const isMyCall = info.user === myUsername;
+    const initial = (info.user || '?')[0].toUpperCase();
+
+    card.innerHTML = `
+      <div class="call-avatar">${initial}</div>
+      <div class="call-info">
+        <div class="call-user">${info.user}</div>
+        <div class="call-meta">In call da</div>
+        <div class="call-timer" id="timer-${callId}">00:00</div>
+      </div>
+      ${isMyCall ? `<button class="end-btn" data-call-id="${callId}">✅ Termina call</button>` : ''}
+    `;
+
+    panel.appendChild(card);
+
+    const timerEl = document.getElementById(`timer-${callId}`);
+    timerEl.textContent = formatDuration(info.startTime);
+    callTimers[callId] = setInterval(() => {
+      timerEl.textContent = formatDuration(info.startTime);
+    }, 1000);
+  });
+
+  panel.querySelectorAll('.end-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      ipcRenderer.send('end-specific-call', btn.dataset.callId);
+    });
+  });
+}
+
+// Dismiss: chiude completamente la finestra, si riapre solo con nuova call
+document.getElementById('dismiss-btn').addEventListener('click', () => {
+  ipcRenderer.send('dismiss-alert');
+});
+
+ipcRenderer.on('update-calls', (_, data) => {
+  myUsername = data.myUsername;
+
+  // Controlla se ci sono call nuove rispetto a quelle già note
+  const incomingIds = Object.keys(data.calls);
+  const hasNewCall = incomingIds.some(id => !knownCallIds.has(id));
+  incomingIds.forEach(id => knownCallIds.add(id));
+  // Rimuove le call terminate
+  for (const id of knownCallIds) {
+    if (!data.calls[id]) knownCallIds.delete(id);
+  }
+
+  renderCalls(data.calls, hasNewCall);
+});
+</script>
+</body>
+</html>
