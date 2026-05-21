@@ -11,6 +11,11 @@
   "build": {
     "appId": "com.devlogica.callalert",
     "productName": "CallAlert",
+    "publish": {
+      "provider": "github",
+      "owner": "egodi99",
+      "repo": "call-alert"
+    },
     "directories": {
       "output": "dist"
     },
@@ -23,6 +28,13 @@
       "target": [
         {
           "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "x64",
             "arm64"
@@ -56,6 +68,9 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Call Alert"
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.0"
   },
   "devDependencies": {
     "electron": "^28.0.0",
