@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output (Electron Builder)
+dist/
+out/
+build/
+
+# macOS
+.DS_Store
+*.dmg
+
+# Windows
+*.exe
+*.msi
+*.nsis
+*.blockmap
+
+# Linux
+*.AppImage
+*.deb
+*.rpm
+*.snap
+
+# Electron Builder artifacts
+*.yaml
+*.yml
+!.github/**/*.yml
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
