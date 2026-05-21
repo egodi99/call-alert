@@ -209,37 +209,30 @@ const { ipcRenderer } = require('electron');
 let callTimers = {};
 let myUsername = '';
 let knownCallIds = new Set();
+let currentVolume = 0.7;
 
 // ── Suono notifica gentile via Web Audio API ──────────────────────────────────
-function playNotification() {
+function playNotification(volume) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-    // Due note morbide in sequenza: una "campana" delicata
     function playTone(freq, startAt, duration, gainPeak) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-
       osc.connect(gain);
       gain.connect(ctx.destination);
-
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
-
-      // Fade in veloce, fade out lento → suono morbido tipo campanella
       gain.gain.setValueAtTime(0, ctx.currentTime + startAt);
-      gain.gain.linearRampToValueAtTime(gainPeak, ctx.currentTime + startAt + 0.04);
+      gain.gain.linearRampToValueAtTime(gainPeak * volume, ctx.currentTime + startAt + 0.04);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startAt + duration);
-
       osc.start(ctx.currentTime + startAt);
       osc.stop(ctx.currentTime + startAt + duration);
     }
 
-    // Prima nota: Do5 (523Hz), seconda nota: Mi5 (659Hz) — intervallo di terza, suono piacevole
     playTone(523, 0,    0.8, 0.18);
     playTone(659, 0.22, 0.9, 0.13);
 
-    // Chiudi il contesto dopo che i suoni finiscono
     setTimeout(() => ctx.close(), 1500);
   } catch (e) {
     console.log('Audio non disponibile:', e);
@@ -254,7 +247,7 @@ function formatDuration(startTime) {
 }
 
 function renderCalls(calls, isNew) {
-  if (isNew) playNotification();
+  if (isNew) playNotification(currentVolume);
   const panel = document.getElementById('calls-panel');
   const countEl = document.getElementById('call-count');
   const miniText = document.getElementById('mini-text');
@@ -309,12 +302,11 @@ document.getElementById('dismiss-btn').addEventListener('click', () => {
 
 ipcRenderer.on('update-calls', (_, data) => {
   myUsername = data.myUsername;
+  if (typeof data.notificationVolume === 'number') currentVolume = data.notificationVolume;
 
-  // Controlla se ci sono call nuove rispetto a quelle già note
   const incomingIds = Object.keys(data.calls);
   const hasNewCall = incomingIds.some(id => !knownCallIds.has(id));
   incomingIds.forEach(id => knownCallIds.add(id));
-  // Rimuove le call terminate
   for (const id of knownCallIds) {
     if (!data.calls[id]) knownCallIds.delete(id);
   }
