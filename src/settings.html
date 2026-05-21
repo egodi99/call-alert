@@ -101,6 +101,42 @@
     transition: opacity 0.3s;
   }
   .status.show { opacity: 1; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    flex: 1;
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.15);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ff3b30;
+    cursor: pointer;
+  }
+  .volume-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .volume-value {
+    font-size: 15px;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    min-width: 38px;
+    text-align: right;
+  }
+  .btn-test {
+    padding: 7px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
 </style>
 </head>
 <body>
@@ -110,6 +146,15 @@
   <label for="username">Il tuo nome</label>
   <input type="text" id="username" placeholder="Es. Marco, Giulia…" maxlength="30" />
   <p class="hint">Questo nome verrà mostrato agli altri quando sei in call.</p>
+
+  <div style="margin-top: 28px;">
+    <label for="volume">Volume notifiche</label>
+    <div class="volume-row">
+      <input type="range" id="volume" min="0" max="100" step="1" />
+      <span class="volume-value" id="volume-value">70%</span>
+      <button class="btn btn-secondary btn-test" id="btn-test">🔔 Prova</button>
+    </div>
+  </div>
 
   <div class="spacer"></div>
 
@@ -125,18 +170,53 @@
 
   ipcRenderer.on('load-config', (_, config) => {
     document.getElementById('username').value = config.username || '';
+    const vol = typeof config.notificationVolume === 'number' ? config.notificationVolume : 0.7;
+    const pct = Math.round(vol * 100);
+    document.getElementById('volume').value = pct;
+    document.getElementById('volume-value').textContent = pct + '%';
   });
 
   document.getElementById('btn-save').addEventListener('click', () => {
     const username = document.getElementById('username').value.trim();
     if (!username) { alert('Inserisci il tuo nome.'); return; }
-    ipcRenderer.send('save-username', username);
+    const notificationVolume = document.getElementById('volume').value / 100;
+    ipcRenderer.send('save-settings', { username, notificationVolume });
     const s = document.getElementById('status');
     s.classList.add('show');
     setTimeout(() => { s.classList.remove('show'); window.close(); }, 1000);
   });
 
   document.getElementById('btn-cancel').addEventListener('click', () => window.close());
+
+  document.getElementById('volume').addEventListener('input', (e) => {
+    document.getElementById('volume-value').textContent = e.target.value + '%';
+  });
+
+  document.getElementById('btn-test').addEventListener('click', () => {
+    playNotificationTest(document.getElementById('volume').value / 100);
+  });
+
+  function playNotificationTest(volume) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      function playTone(freq, startAt, duration, gainPeak) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
+        gain.gain.setValueAtTime(0, ctx.currentTime + startAt);
+        gain.gain.linearRampToValueAtTime(gainPeak * volume, ctx.currentTime + startAt + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startAt + duration);
+        osc.start(ctx.currentTime + startAt);
+        osc.stop(ctx.currentTime + startAt + duration);
+      }
+      playTone(523, 0,    0.8, 0.18);
+      playTone(659, 0.22, 0.9, 0.13);
+      setTimeout(() => ctx.close(), 1500);
+    } catch (e) {}
+  }
 
   document.getElementById('username').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') document.getElementById('btn-save').click();
