@@ -185,8 +185,22 @@ function handlePacket(packet, fromIP) {
     showCoffee(true);
     updateTray();
   } else if (packet.type === 'COFFEE_END') {
+    coffeeRSVP = {};
     hideCoffee();
     updateTray();
+  } else if (packet.type === 'COFFEE_RSVP') {
+    coffeeRSVP[packet.user] = packet.answer;
+    broadcastCoffeeState();
+  } else if (packet.type === 'COFFEE_STATE') {
+    coffeeRSVP = packet.rsvp || {};
+    if (coffeeWindow) {
+      coffeeWindow.webContents.send('update-coffee', {
+        myUsername, forceShow: false,
+        invitedBy: packet.invitedBy || coffeeInvitedBy,
+        isOwner: coffeeStartedByMe,
+        rsvp: coffeeRSVP
+      });
+    }
   }
 }
 
@@ -246,7 +260,7 @@ function hideAlert() {
 // ── Coffee Window ─────────────────────────────────────────────────────────────
 function showCoffee(forceShow = false) {
   if (coffeeWindow) {
-    coffeeWindow.webContents.send('update-coffee', { myUsername, forceShow, invitedBy: coffeeInvitedBy, isOwner: coffeeStartedByMe });
+    coffeeWindow.webContents.send('update-coffee', { myUsername, forceShow, invitedBy: coffeeInvitedBy, isOwner: coffeeStartedByMe, rsvp: coffeeRSVP });
     return;
   }
 
@@ -266,9 +280,33 @@ function showCoffee(forceShow = false) {
   coffeeWindow.setVisibleOnAllWorkspaces(true);
   coffeeWindow.setAlwaysOnTop(true, 'screen-saver');
   coffeeWindow.webContents.on('did-finish-load', () => {
-    coffeeWindow.webContents.send('update-coffee', { myUsername, forceShow: true, invitedBy: coffeeInvitedBy, isOwner: coffeeStartedByMe });
+    coffeeWindow.webContents.send('update-coffee', { myUsername, forceShow: true, invitedBy: coffeeInvitedBy, isOwner: coffeeStartedByMe, rsvp: coffeeRSVP });
   });
   coffeeWindow.on('closed', () => { coffeeWindow = null; });
+}
+
+function broadcastCoffeeState() {
+  // Invia lo stato RSVP aggiornato a tutti tramite broadcast
+  const msg = Buffer.from(JSON.stringify({
+    type: 'COFFEE_STATE',
+    rsvp: coffeeRSVP,
+    invitedBy: coffeeInvitedBy
+  }));
+  getBroadcastAddresses().forEach(addr => {
+    udpSocket.send(msg, 0, msg.length, UDP_PORT, addr);
+  });
+  Object.values(knownPeers).forEach(ip => {
+    if (ip !== getLocalIP()) udpSocket.send(msg, 0, msg.length, UDP_PORT, ip);
+  });
+  // Aggiorna anche la nostra finestra locale
+  if (coffeeWindow) {
+    coffeeWindow.webContents.send('update-coffee', {
+      myUsername, forceShow: false,
+      invitedBy: coffeeInvitedBy,
+      isOwner: coffeeStartedByMe,
+      rsvp: coffeeRSVP
+    });
+  }
 }
 
 function hideCoffee() {
@@ -374,10 +412,12 @@ function endMyCall() {
 
 let coffeeStartedByMe = false;
 let coffeeInvitedBy = '';
+let coffeeRSVP = {}; // { username: 'yes'|'no' }
 
 function startCoffee() {
   coffeeStartedByMe = true;
   coffeeInvitedBy = myUsername;
+  coffeeRSVP = {};
   broadcast({ type: 'COFFEE_START', user: myUsername });
 }
 
@@ -385,6 +425,7 @@ function endCoffee() {
   if (!coffeeStartedByMe) return;
   coffeeStartedByMe = false;
   coffeeInvitedBy = '';
+  coffeeRSVP = {};
   broadcast({ type: 'COFFEE_END', user: myUsername });
 }
 
@@ -407,6 +448,10 @@ ipcMain.on('dismiss-coffee', () => {
 
 ipcMain.on('end-coffee', () => {
   endCoffee();
+});
+
+ipcMain.on('coffee-rsvp', (_, answer) => {
+  broadcast({ type: 'COFFEE_RSVP', user: myUsername, answer });
 });
 
 ipcMain.on('end-specific-call', (_, callId) => {
