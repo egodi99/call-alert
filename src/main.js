@@ -20,6 +20,7 @@ let udpSocket = null;
 let activeCalls = {};
 let knownPeers = {}; // { username: ip }
 let myUsername = 'Utente';
+let notificationVolume = 0.7;
 let updateState = null; // null | 'auto' | 'manual'
 let fallbackChecked = false;
 
@@ -29,13 +30,15 @@ function loadConfig() {
     if (fs.existsSync(CONFIG_PATH)) {
       const data = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
       myUsername = data.username || 'Utente';
+      notificationVolume = typeof data.notificationVolume === 'number' ? data.notificationVolume : 0.7;
     }
   } catch (e) {}
 }
 
-function saveConfig(username) {
+function saveSettings(username, volume) {
   myUsername = username;
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify({ username }), 'utf8');
+  notificationVolume = volume;
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify({ username, notificationVolume: volume }), 'utf8');
 }
 
 function getLocalIP() {
@@ -260,7 +263,8 @@ function handlePacket(packet, fromIP) {
         myUsername, forceShow: false,
         invitedBy: packet.invitedBy || coffeeInvitedBy,
         isOwner: coffeeStartedByMe,
-        rsvp: coffeeRSVP
+        rsvp: coffeeRSVP,
+        notificationVolume
       });
     }
   }
@@ -308,6 +312,7 @@ function refreshAlert(forceShow = false) {
   alertWindow.webContents.send('update-calls', {
     calls: activeCalls,
     myUsername,
+    notificationVolume,
     forceShow
   });
 }
@@ -322,7 +327,11 @@ function hideAlert() {
 // ── Coffee Window ─────────────────────────────────────────────────────────────
 function showCoffee(forceShow = false) {
   if (coffeeWindow) {
-    coffeeWindow.webContents.send('update-coffee', { myUsername, forceShow, invitedBy: coffeeInvitedBy, isOwner: coffeeStartedByMe, rsvp: coffeeRSVP });
+    coffeeWindow.webContents.send('update-coffee', {
+      myUsername, forceShow, invitedBy: coffeeInvitedBy,
+      isOwner: coffeeStartedByMe, rsvp: coffeeRSVP,
+      notificationVolume
+    });
     return;
   }
 
@@ -342,7 +351,11 @@ function showCoffee(forceShow = false) {
   coffeeWindow.setVisibleOnAllWorkspaces(true);
   coffeeWindow.setAlwaysOnTop(true, 'screen-saver');
   coffeeWindow.webContents.on('did-finish-load', () => {
-    coffeeWindow.webContents.send('update-coffee', { myUsername, forceShow: true, invitedBy: coffeeInvitedBy, isOwner: coffeeStartedByMe, rsvp: coffeeRSVP });
+    coffeeWindow.webContents.send('update-coffee', {
+      myUsername, forceShow: true, invitedBy: coffeeInvitedBy,
+      isOwner: coffeeStartedByMe, rsvp: coffeeRSVP,
+      notificationVolume
+    });
   });
   coffeeWindow.on('closed', () => { coffeeWindow = null; });
 }
@@ -366,7 +379,8 @@ function broadcastCoffeeState() {
       myUsername, forceShow: false,
       invitedBy: coffeeInvitedBy,
       isOwner: coffeeStartedByMe,
-      rsvp: coffeeRSVP
+      rsvp: coffeeRSVP,
+      notificationVolume
     });
   }
 }
@@ -381,7 +395,7 @@ function openSettings() {
 
   settingsWindow = new BrowserWindow({
     width: 420,
-    height: 320,
+    height: 430,
     resizable: false,
     title: 'Call Alert – Impostazioni',
     webPreferences: {
@@ -392,7 +406,7 @@ function openSettings() {
 
   settingsWindow.loadFile(path.join(__dirname, 'settings.html'));
   settingsWindow.webContents.on('did-finish-load', () => {
-    settingsWindow.webContents.send('load-config', { username: myUsername });
+    settingsWindow.webContents.send('load-config', { username: myUsername, notificationVolume });
   });
   settingsWindow.on('closed', () => { settingsWindow = null; });
 }
@@ -502,8 +516,8 @@ function endCoffee() {
 }
 
 // ── IPC ───────────────────────────────────────────────────────────────────────
-ipcMain.on('save-username', (_, username) => {
-  saveConfig(username);
+ipcMain.on('save-settings', (_, { username, notificationVolume: volume }) => {
+  saveSettings(username, volume);
   updateTray();
 });
 
