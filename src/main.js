@@ -460,6 +460,10 @@ function updateTray() {
     },
     { type: 'separator' },
     { label: '⚙️ Impostazioni', click: openSettings },
+    {
+      label: 'Peer conosciuti:' + (Object.keys(knownPeers).length > 0 ? ` ${Object.keys(knownPeers).join(', ')}` : ' nessuno'),
+      enabled: false
+    },
     { type: 'separator' },
     {
       label: '⬆️ Aggiornamento pronto — Riavvia',
@@ -471,7 +475,12 @@ function updateTray() {
       visible: updateState === 'manual',
       click: () => shell.openExternal(RELEASES_URL).catch(err => console.error('[updater] open releases error:', err.message))
     },
-    { label: 'Esci', click: () => app.quit() }
+    { type: 'separator' },
+    {
+      label: 'Versione: ' + app.getVersion(),
+      enabled: false
+    },
+    { label: 'Esci', click: () => app.quit() },
   ]);
 
   tray.setContextMenu(contextMenu);
