@@ -239,8 +239,9 @@ const { ipcRenderer } = require('electron');
 
 let myUsername = '';
 let myAnswer = null; // 'yes' | 'no' | null
+let currentVolume = 0.7;
 
-function playNotification() {
+function playNotification(volume) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     function playTone(freq, startAt, duration, gainPeak) {
@@ -250,12 +251,12 @@ function playNotification() {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
       gain.gain.setValueAtTime(0, ctx.currentTime + startAt);
-      gain.gain.linearRampToValueAtTime(gainPeak, ctx.currentTime + startAt + 0.06);
+      gain.gain.linearRampToValueAtTime(gainPeak * volume, ctx.currentTime + startAt + 0.06);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startAt + duration);
       osc.start(ctx.currentTime + startAt);
       osc.stop(ctx.currentTime + startAt + duration);
     }
-    playTone(440, 0, 0.7, 0.12);
+    playTone(440, 0,    0.7, 0.12);
     playTone(554, 0.25, 0.7, 0.10);
     playTone(659, 0.50, 1.0, 0.08);
     setTimeout(() => ctx.close(), 2000);
@@ -291,9 +292,10 @@ function renderRSVP(rsvp, isOwner, invitedBy) {
 
 ipcRenderer.on('update-coffee', (_, data) => {
   myUsername = data.myUsername;
+  if (typeof data.notificationVolume === 'number') currentVolume = data.notificationVolume;
   if (data.forceShow) {
-    myAnswer = null; // reset risposta per nuova pausa
-    playNotification();
+    myAnswer = null;
+    playNotification(currentVolume);
   }
 
   document.getElementById('banner-sub').textContent = `${data.invitedBy || '…'} ti aspetta al caffè`;
