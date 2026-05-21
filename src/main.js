@@ -101,10 +101,7 @@ function setupAutoUpdater() {
   });
 
   setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(err => {
-      console.error('[updater] checkForUpdates failed:', err.message);
-      checkVersionFallback();
-    });
+    autoUpdater.checkForUpdates();
   }, 3000);
 }
 
