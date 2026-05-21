@@ -1,12 +1,15 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, shell } = require('electron');
 const dgram = require('dgram');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const UDP_PORT = 47832;
 const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
+const GITHUB_RELEASES_API = 'https://api.github.com/repos/egodi99/call-alert/releases/latest';
+const RELEASES_URL = 'https://github.com/egodi99/call-alert/releases/latest';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let tray = null;
@@ -17,6 +20,8 @@ let udpSocket = null;
 let activeCalls = {};
 let knownPeers = {}; // { username: ip }
 let myUsername = 'Utente';
+let updateState = null; // null | 'auto' | 'manual'
+let fallbackChecked = false;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function loadConfig() {
@@ -41,6 +46,66 @@ function getLocalIP() {
     }
   }
   return '127.0.0.1';
+}
+
+function isNewerVersion(latest, current) {
+  const parse = v => v.split('.').map(Number);
+  const [lMaj, lMin, lPatch] = parse(latest);
+  const [cMaj, cMin, cPatch] = parse(current);
+  if (lMaj !== cMaj) return lMaj > cMaj;
+  if (lMin !== cMin) return lMin > cMin;
+  return lPatch > cPatch;
+}
+
+function checkVersionFallback() {
+  if (fallbackChecked) return;
+  fallbackChecked = true;
+  const https = require('https');
+  const req = https.get(
+    GITHUB_RELEASES_API,
+    { headers: { 'User-Agent': 'call-alert-updater' } },
+    (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const release = JSON.parse(data);
+          const latestTag = (release.tag_name || '').replace(/^v/, '');
+          const currentVersion = app.getVersion();
+          if (latestTag && isNewerVersion(latestTag, currentVersion)) {
+            updateState = 'manual';
+            updateTray();
+          }
+        } catch (e) {
+          console.error('[updater] fallback parse error:', e.message);
+        }
+      });
+    }
+  );
+  req.on('error', err => console.error('[updater] fallback request error:', err.message));
+  req.end();
+}
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = false;
+
+  autoUpdater.on('update-downloaded', () => {
+    updateState = 'auto';
+    updateTray();
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('[updater] error:', err.message);
+    checkVersionFallback();
+  });
+
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch(err => {
+      console.error('[updater] checkForUpdates failed:', err.message);
+      checkVersionFallback();
+    });
+  }, 3000);
 }
 
 // Calcola tutti gli indirizzi di broadcast della rete locale
@@ -505,6 +570,7 @@ app.whenReady().then(() => {
   }, 1000);
 
   app.on('window-all-closed', (e) => e.preventDefault());
+  setupAutoUpdater();
 });
 
 app.on('before-quit', () => {
