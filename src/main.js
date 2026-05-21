@@ -455,7 +455,7 @@ function updateTray() {
     {
       label: '⬆️ Nuova versione disponibile',
       visible: updateState === 'manual',
-      click: () => shell.openExternal(RELEASES_URL)
+      click: () => shell.openExternal(RELEASES_URL).catch(err => console.error('[updater] open releases error:', err.message))
     },
     { label: 'Esci', click: () => app.quit() }
   ]);
