@@ -447,6 +447,16 @@ function updateTray() {
     { type: 'separator' },
     { label: '⚙️ Impostazioni', click: openSettings },
     { type: 'separator' },
+    {
+      label: '⬆️ Aggiornamento pronto — Riavvia',
+      visible: updateState === 'auto',
+      click: () => autoUpdater.quitAndInstall()
+    },
+    {
+      label: '⬆️ Nuova versione disponibile',
+      visible: updateState === 'manual',
+      click: () => shell.openExternal(RELEASES_URL)
+    },
     { label: 'Esci', click: () => app.quit() }
   ]);
 
