@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, shell, Notification } = require('electron');
 const dgram = require('dgram');
 const os = require('os');
 const path = require('path');
@@ -78,6 +78,7 @@ function checkVersionFallback() {
           if (latestTag && isNewerVersion(latestTag, currentVersion)) {
             updateState = 'manual';
             updateTray();
+            showUpdateNotification('manual');
           }
         } catch (e) {
           console.error('[updater] fallback parse error:', e.message);
@@ -96,6 +97,7 @@ function setupAutoUpdater() {
   autoUpdater.on('update-downloaded', () => {
     updateState = 'auto';
     updateTray();
+    showUpdateNotification('auto');
   });
 
   autoUpdater.on('error', (err) => {
@@ -106,6 +108,29 @@ function setupAutoUpdater() {
   setTimeout(() => {
     autoUpdater.checkForUpdates();
   }, 3000);
+}
+
+function showUpdateNotification(type) {
+  if (!Notification.isSupported()) return;
+
+  const n = new Notification({
+    title: type === 'auto' ? '⬆️ Call Alert aggiornato' : '⬆️ Nuova versione disponibile',
+    body: type === 'auto'
+      ? 'Clicca per riavviare e installare l\'aggiornamento.'
+      : 'Clicca per scaricare la nuova versione.'
+  });
+
+  n.on('click', () => {
+    if (type === 'auto') {
+      autoUpdater.quitAndInstall();
+    } else {
+      shell.openExternal(RELEASES_URL).catch(err =>
+        console.error('[updater] open releases error:', err.message)
+      );
+    }
+  });
+
+  n.show();
 }
 
 // Calcola tutti gli indirizzi di broadcast della rete locale
