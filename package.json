@@ -1,6 +1,6 @@
 {
   "name": "call-alert",
-  "version": "1.10.2",
+  "version": "1.10.3",
   "description": "Ufficio in call - alert per tutto l'ufficio",
   "main": "src/main.js",
   "scripts": {
